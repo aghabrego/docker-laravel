@@ -12,20 +12,6 @@ services:
       MYSQL_PASSWORD: $DB_PASSWORD
     ports:
       - 13306:3306
-  #      - ./mariadb-init:/docker-entrypoint-initdb.d # Place init .sql file(s) here.
-  #      - /path/to/mariadb/data/on/host:/var/lib/mysql # I want to manage volumes manually.
-
-  #  postgres:
-  #    image: wodby/postgres:$POSTGRES_TAG
-  #    container_name: "${PROJECT_NAME}_postgres"
-  #    stop_grace_period: 30s
-  #    environment:
-  #      POSTGRES_PASSWORD: $DB_PASSWORD
-  #      POSTGRES_DB: $DB_DATABASE
-  #      POSTGRES_USER: $DB_USERNAME
-  #    volumes:
-  #      - ./postgres-init:/docker-entrypoint-initdb.d # Place init file(s) here.
-  #      - /path/to/postgres/data/on/host:/var/lib/postgresql/data # I want to manage volumes manually.
 
   php:
     image: wodby/php:$PHP_TAG
@@ -54,10 +40,10 @@ services:
     #      PHP_XDEBUG_REMOTE_HOST: 10.254.254.254 # macOS
     #      PHP_XDEBUG_REMOTE_HOST: 10.0.75.1 # Windows
     volumes:
-      - ./:/var/www/html
+      - $APP_ROOT:$APP_PATH
   ## For macOS users (https://wodby.com/stacks/php/docs/local/docker-for-mac/)
-  #      - ./:/var/www/html:cached # User-guided caching
-  #      - docker-sync:/var/www/html # Docker-sync
+  #      - $APP_ROOT:$APP_PATH:cached # User-guided caching
+  #      - docker-sync:$APP_PATH # Docker-sync
   ## For XHProf and Xdebug profiler traces
   #      - files:/mnt/files
 
@@ -71,12 +57,12 @@ services:
       NGINX_ERROR_LOG_LEVEL: debug
       NGINX_BACKEND_HOST: php
       NGINX_VHOST_PRESET: php
-      NGINX_SERVER_ROOT: /var/www/html/public
+      NGINX_SERVER_ROOT: "${APP_PATH}/public"
     volumes:
-      - ./:/var/www/html
+      - $APP_ROOT:$APP_PATH
     # Options for macOS users (https://wodby.com/stacks/php/docs/local/docker-for-mac/)
-    #      - ./:/var/www/html:cached # User-guided caching
-    #      - docker-sync:/var/www/html # Docker-sync
+    #      - $APP_ROOT:$APP_PATH:cached # User-guided caching
+    #      - docker-sync:$APP_PATH # Docker-sync
     labels:
       - 'traefik.backend=nginx'
       - 'traefik.port=80'
@@ -91,12 +77,12 @@ services:
   #      APACHE_LOG_LEVEL: debug
   #      APACHE_BACKEND_HOST: php
   #      APACHE_VHOST_PRESET: php
-  #      APACHE_DOCUMENT_ROOT: /var/www/html/public
+  #      APACHE_DOCUMENT_ROOT: $APP_PATH/public
   #    volumes:
-  #      - ./:/var/www/html
+  #      - $APP_ROOT:$APP_PATH
   ## For macOS users (https://wodby.com/stacks/php/docs/local/docker-for-mac/)
-  ##      - ./:/var/www/html:cached # User-guided caching
-  ##      - docker-sync:/var/www/html # Docker-sync
+  ##      - $APP_ROOT:$APP_PATH:cached # User-guided caching
+  ##      - docker-sync:$APP_PATH # Docker-sync
   #    labels:
   #      - 'traefik.backend=apache'
   #      - 'traefik.port=80'
@@ -124,10 +110,6 @@ services:
   #      - 'traefik.backend=varnish'
   #      - 'traefik.port=6081'
   #      - 'traefik.frontend.rule=Host:varnish.${PROJECT_BASE_URL}'
-
-  #  redis:
-  #    container_name: "${PROJECT_NAME}_redis"
-  #    image: wodby/redis:$REDIS_TAG
 
   adminer:
     container_name: "${PROJECT_NAME}_adminer"
@@ -184,9 +166,13 @@ services:
   #      - 'traefik.port=5601'
   #      - 'traefik.frontend.rule=Host:kibana.php.docker.localhost'
 
-  memcached:
-    container_name: "${PROJECT_NAME}_memcached"
-    image: wodby/memcached:$MEMCACHED_TAG
+  # memcached:
+  #  container_name: "${PROJECT_NAME}_memcached"
+  #  image: wodby/memcached:$MEMCACHED_TAG
+
+  redis:
+    container_name: "${PROJECT_NAME}_redis"
+    image: wodby/redis:$REDIS_TAG
 
   #  rsyslog:
   #    container_name: "${PROJECT_NAME}_rsyslog"
@@ -206,7 +192,7 @@ services:
   node:
     image: wodby/node:$NODE_TAG
     container_name: "${PROJECT_NAME}_node"
-    working_dir: /var/www/html
+    working_dir: $APP_PATH
     labels:
       - 'traefik.backend=node'
       - 'traefik.port=3000'
@@ -214,11 +200,25 @@ services:
     expose:
       - "3000"
     volumes:
-      - ./:/var/www/html
+      - $APP_ROOT:$APP_PATH
     #command: sh -c 'npm install && npm run dev && which npm'
 
     # keep the container running so we can use tools like npm from the shell
     command: sh -c 'tail -f /dev/null'
+
+  echo:
+    image: 'sunasteriskrnd/laravel-echo-server:1.6.2'
+    container_name: "${PROJECT_NAME}_echo"
+    environment:
+      AUTH_HOST: "http://nginx"
+      AUTH_ENDPOINT: "/broadcasting/auth"
+      REDIS_HOST: "redis"
+      ALLOW_CORS: "true"
+      ALLOW_ORIGIN: "http://nginx"
+      ALLOW_METHODS: "GET, POST"
+      ALLOW_HEADERS: "Origin, Content-Type, X-Auth-Token, X-Requested-With, Accept, Authorization, X-CSRF-TOKEN, X-Socket-Id"
+    ports:
+      - '6001:6001'
 
   #  blackfire:
   #    image: blackfire/blackfire
@@ -263,12 +263,11 @@ services:
       - 'traefik.frontend.rule=Host:portainer.${PROJECT_BASE_URL}'
 
   traefik:
-    image: traefik
+    image: traefik:v1.7
     container_name: "${PROJECT_NAME}_traefik"
     command: -c /dev/null --web --docker --logLevel=INFO
     ports:
       - '80:80'
-      # - '8000:80'
       - '8080:8080' # Dashboard
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

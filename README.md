@@ -8,6 +8,7 @@ El marco Laravel tiene algunos requisitos de sistema.
 - Mbstring PHP Extension
 - Tokenizer PHP Extension
 - Memcache PHP Extension
+- Redis PHP Extension
 
 ## Tecnologías
 
@@ -27,10 +28,10 @@ Documentación oficial para instalar [Laravel Homestead](https://laravel.com/doc
 
 Agregar lo siguiente al archivo `hosts` de la maquina:
 
-* 127.0.0.1    weirdolabs.test
-* 127.0.0.1    adminer.weirdolabs.test
-* 127.0.0.1    mailhog.weirdolabs.test
-* 127.0.0.1    portainer.weirdolabs.test
+* 127.0.0.1    example.test
+* 127.0.0.1    adminer.example.test
+* 127.0.0.1    mailhog.example.test
+* 127.0.0.1    portainer.example.test
 
 Puertos:
 * 8080: Dashboard de Traefik.
